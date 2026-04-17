@@ -1,0 +1,12 @@
+{
+  "domain": "pulsepoint",
+  "name": "PulsePoint",
+  "version": "0.1.0",
+  "config_flow": true,
+  "documentation": "https://github.com/YOUR_GITHUB/ha-pulsepoint",
+  "issue_tracker": "https://github.com/YOUR_GITHUB/ha-pulsepoint/issues",
+  "codeowners": ["@YOUR_GITHUB"],
+  "iot_class": "cloud_polling",
+  "requirements": ["cryptography>=41.0.0"],
+  "integration_type": "service"
+}
