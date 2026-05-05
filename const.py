@@ -18,10 +18,12 @@ CONF_SCAN_INTERVAL = "scan_interval"
 CONF_INCIDENT_TYPES = "incident_types"
 CONF_WATCHED_ADDRESSES = "watched_addresses"
 CONF_WATCH_RADIUS_KM = "watch_radius_km"
+CONF_CLOSED_TTL = "closed_ttl"
 
 # Defaults
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=60)
 DEFAULT_WATCH_RADIUS_KM = 1.0
+DEFAULT_CLOSED_TTL = 60  # minutes
 
 # Events fired on the HA bus
 EVENT_NEW_INCIDENT = f"{DOMAIN}_new_incident"

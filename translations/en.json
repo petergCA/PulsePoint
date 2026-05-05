@@ -28,7 +28,8 @@
           "scan_interval": "Poll interval (seconds)",
           "incident_types": "Only include these incident types (leave empty for all)",
           "watch_radius_km": "Watched-address radius (km)",
-          "watched_addresses": "Watched addresses (YAML list; each item: name, address, latitude, longitude)"
+          "watched_addresses": "Watched addresses (YAML list; each item: name, address, latitude, longitude)",
+          "closed_ttl": "Keep closed incidents on map (minutes)"
         }
       }
     }

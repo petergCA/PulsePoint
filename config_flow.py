@@ -9,6 +9,15 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
+    ObjectSelector,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 
 from .api import (
     PulsePointClient,
@@ -19,10 +28,12 @@ from .api import (
 )
 from .const import (
     CONF_AGENCY_ID,
+    CONF_CLOSED_TTL,
     CONF_INCIDENT_TYPES,
     CONF_SCAN_INTERVAL,
     CONF_WATCH_RADIUS_KM,
     CONF_WATCHED_ADDRESSES,
+    DEFAULT_CLOSED_TTL,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_WATCH_RADIUS_KM,
     DOMAIN,
@@ -110,11 +121,10 @@ class PulsePointOptionsFlow(config_entries.OptionsFlow):
             merged.update(user_input)
             return self.async_create_entry(title="", data=merged)
 
-        # Sort and present known incident type codes + their names for the multi-select
-        type_choices = {
-            code: f"{code} — {name}"
+        type_options = [
+            {"value": code, "label": f"{code} — {name}"}
             for code, name in sorted(INCIDENT_TYPES.items(), key=lambda kv: kv[1])
-        }
+        ]
 
         schema = vol.Schema(
             {
@@ -123,19 +133,39 @@ class PulsePointOptionsFlow(config_entries.OptionsFlow):
                     default=current.get(
                         CONF_SCAN_INTERVAL, int(DEFAULT_SCAN_INTERVAL.total_seconds())
                     ),
-                ): vol.All(vol.Coerce(int), vol.Range(min=15, max=3600)),
+                ): NumberSelector(NumberSelectorConfig(
+                    min=15, max=3600, step=1,
+                    unit_of_measurement="s",
+                    mode=NumberSelectorMode.BOX,
+                )),
                 vol.Optional(
                     CONF_INCIDENT_TYPES,
                     default=current.get(CONF_INCIDENT_TYPES, []),
-                ): vol.All(list, [vol.In(list(type_choices))]),
+                ): SelectSelector(SelectSelectorConfig(
+                    options=type_options,
+                    multiple=True,
+                    mode=SelectSelectorMode.DROPDOWN,
+                )),
                 vol.Optional(
                     CONF_WATCH_RADIUS_KM,
                     default=current.get(CONF_WATCH_RADIUS_KM, DEFAULT_WATCH_RADIUS_KM),
-                ): vol.All(vol.Coerce(float), vol.Range(min=0.05, max=50.0)),
+                ): NumberSelector(NumberSelectorConfig(
+                    min=0.05, max=50.0, step=0.05,
+                    unit_of_measurement="km",
+                    mode=NumberSelectorMode.BOX,
+                )),
                 vol.Optional(
                     CONF_WATCHED_ADDRESSES,
                     default=current.get(CONF_WATCHED_ADDRESSES, []),
-                ): list,
+                ): ObjectSelector(),
+                vol.Optional(
+                    CONF_CLOSED_TTL,
+                    default=current.get(CONF_CLOSED_TTL, DEFAULT_CLOSED_TTL),
+                ): NumberSelector(NumberSelectorConfig(
+                    min=1, max=1440, step=1,
+                    unit_of_measurement="min",
+                    mode=NumberSelectorMode.BOX,
+                )),
             }
         )
 
