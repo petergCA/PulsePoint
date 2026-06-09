@@ -24,7 +24,9 @@ CONF_SHOW_MAP_PINS = "show_map_pins"
 # Defaults
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=60)
 DEFAULT_WATCH_RADIUS_KM = 1.0
-DEFAULT_CLOSED_TTL = 60  # minutes
+# Minutes to keep a cleared incident's pin on the map in a "closed" state.
+# 0 (default) removes the pin immediately when the incident clears.
+DEFAULT_CLOSED_TTL = 0
 DEFAULT_SHOW_MAP_PINS = True
 
 # Events fired on the HA bus
