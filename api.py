@@ -11,6 +11,7 @@ can surface a clean error in the UI instead of crashing.
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import json
@@ -210,7 +211,12 @@ class PulsePointClient:
                 if isinstance(payload, dict) and "ct" in payload:
                     return payload
                 _LOGGER.debug("Unexpected payload from %s: %r", url, payload)
-            except aiohttp.ClientError as err:
+            except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as err:
+                # ClientError: HTTP/connection failures. TimeoutError: the
+                # ClientTimeout above (not an aiohttp.ClientError). ValueError:
+                # a non-JSON / malformed body from resp.json(). In every case
+                # we want to fall through to the next endpoint rather than let
+                # the exception escape, then surface one clean error below.
                 last_err = err
                 _LOGGER.debug("PulsePoint fetch from %s failed: %s", url, err)
         raise PulsePointConnectionError(
