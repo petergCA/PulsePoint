@@ -1,11 +1,22 @@
 """PulsePoint geo_location entities — one per incident, shown on the built-in map.
 
-Entities are created when an incident becomes active and stay on the map in a
-"closed" state after the incident clears, for a configurable TTL (default 60 min).
+Entities are created when an incident becomes active and, when it clears, are
+removed according to the configurable closed-pin TTL (CONF_CLOSED_TTL):
+
+* TTL <= 0 (default): the pin is removed immediately when the incident clears.
+* TTL  > 0:          the pin stays on the map in a "closed" state for that many
+                     minutes, then is removed.
 
 Visibility of all pins can be toggled at runtime via the "Show incidents on
 map" switch; this platform listens for the toggle signal and adds/removes
 entities accordingly without requiring a reload.
+
+NOTE: these pins are intentionally transient and are NOT assigned a unique_id.
+Giving a geo_location entity a unique_id registers it in the entity registry,
+which means async_remove() leaves an "unavailable" ghost row behind when the
+incident clears — causing stale entities to pile up (medical_emergency, _2,
+_3, ...). Native HA geo_location integrations omit unique_id for this exact
+reason, so removed pins disappear cleanly.
 """
 from __future__ import annotations
 
@@ -65,8 +76,18 @@ async def async_setup_entry(
     known: dict[str, PulsePointIncidentGeoEvent] = {}
     scheduled_removals: dict[str, Callable] = {}
 
+    def _closed_ttl_minutes() -> int:
+        return int(entry.options.get(CONF_CLOSED_TTL, DEFAULT_CLOSED_TTL))
+
+    def _remove_entity(inc_id: str) -> None:
+        """Drop a pin entirely (cancel any pending removal and remove the entity)."""
+        _cancel_removal(inc_id)
+        entity = known.pop(inc_id, None)
+        if entity is not None:
+            hass.async_create_task(entity.async_remove())
+
     def _schedule_removal(inc_id: str) -> None:
-        ttl_seconds = int(entry.options.get(CONF_CLOSED_TTL, DEFAULT_CLOSED_TTL)) * 60
+        ttl_seconds = _closed_ttl_minutes() * 60
 
         @callback
         def _do_remove(_now) -> None:
@@ -99,7 +120,7 @@ async def async_setup_entry(
         new_entities: list[PulsePointIncidentGeoEvent] = []
         for inc_id, inc in active_map.items():
             if inc_id not in known:
-                entity = PulsePointIncidentGeoEvent(coordinator, inc)
+                entity = PulsePointIncidentGeoEvent(inc)
                 known[inc_id] = entity
                 new_entities.append(entity)
             else:
@@ -110,10 +131,15 @@ async def async_setup_entry(
                 entity.update_incident(inc, is_active=True)
 
         # Detect newly-closed incidents (were active last poll, gone now).
+        remove_immediately = _closed_ttl_minutes() <= 0
         for inc_id, entity in list(known.items()):
             if inc_id not in active_map and entity.is_active:
-                entity.update_incident(entity.incident, is_active=False)
-                _schedule_removal(inc_id)
+                if remove_immediately:
+                    # TTL disabled: drop the pin the moment the incident clears.
+                    _remove_entity(inc_id)
+                else:
+                    entity.update_incident(entity.incident, is_active=False)
+                    _schedule_removal(inc_id)
 
         if new_entities:
             async_add_entities(new_entities)
@@ -149,15 +175,18 @@ async def async_setup_entry(
 
 
 class PulsePointIncidentGeoEvent(GeolocationEvent):
-    """A single PulsePoint incident shown as a pin on the built-in map."""
+    """A single PulsePoint incident shown as a pin on the built-in map.
+
+    Intentionally has no unique_id so it stays out of the entity registry and
+    is fully removed (not left as an "unavailable" ghost) when it clears.
+    """
 
     _attr_should_poll = False
     _attr_source = GEO_SOURCE
 
-    def __init__(self, coordinator: PulsePointCoordinator, incident: Incident) -> None:
+    def __init__(self, incident: Incident) -> None:
         self._incident = incident
         self._is_active = True
-        self._attr_unique_id = f"{coordinator.entry.entry_id}_geo_{incident.id}"
         self._attr_name = incident.type_name
         self._attr_latitude = incident.latitude
         self._attr_longitude = incident.longitude

@@ -162,7 +162,7 @@ class PulsePointOptionsFlow(config_entries.OptionsFlow):
                     CONF_CLOSED_TTL,
                     default=current.get(CONF_CLOSED_TTL, DEFAULT_CLOSED_TTL),
                 ): NumberSelector(NumberSelectorConfig(
-                    min=1, max=1440, step=1,
+                    min=0, max=1440, step=1,
                     unit_of_measurement="min",
                     mode=NumberSelectorMode.BOX,
                 )),
