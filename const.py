@@ -19,23 +19,16 @@ CONF_INCIDENT_TYPES = "incident_types"
 CONF_WATCHED_ADDRESSES = "watched_addresses"
 CONF_WATCH_RADIUS_KM = "watch_radius_km"
 CONF_CLOSED_TTL = "closed_ttl"
-CONF_SHOW_MAP_PINS = "show_map_pins"
 
 # Defaults
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=60)
 DEFAULT_WATCH_RADIUS_KM = 1.0
 DEFAULT_CLOSED_TTL = 60  # minutes
-DEFAULT_SHOW_MAP_PINS = True
 
 # Events fired on the HA bus
 EVENT_NEW_INCIDENT = f"{DOMAIN}_new_incident"
 EVENT_INCIDENT_CLEARED = f"{DOMAIN}_incident_cleared"
 EVENT_WATCHED_ADDRESS_HIT = f"{DOMAIN}_watched_address_hit"
-
-
-def signal_map_pins(entry_id: str) -> str:
-    """Dispatcher signal used to toggle map-pin visibility for one entry."""
-    return f"{DOMAIN}_map_pins_{entry_id}"
 
 
 ATTR_AGENCY_ID = "agency_id"
