@@ -13,7 +13,7 @@ from .coordinator import PulsePointCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.GEO_LOCATION, Platform.SWITCH]
 
 SERVICE_REFRESH = "refresh"
 

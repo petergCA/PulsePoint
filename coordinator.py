@@ -37,6 +37,7 @@ from .const import (
     CONF_WATCH_RADIUS_KM,
     CONF_WATCHED_ADDRESSES,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_SHOW_MAP_PINS,
     DEFAULT_WATCH_RADIUS_KM,
     DOMAIN,
     EVENT_INCIDENT_CLEARED,
@@ -80,6 +81,10 @@ class PulsePointCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self._client = PulsePointClient(async_get_clientsession(hass), self._agency_id)
         self._known_active: dict[str, Incident] = {}
+
+        # Runtime flag toggled by the "Show incidents on map" switch. The
+        # geo_location platform reads this to decide whether to render pins.
+        self.map_pins_enabled: bool = DEFAULT_SHOW_MAP_PINS
 
         super().__init__(
             hass,
