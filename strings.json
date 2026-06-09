@@ -23,13 +23,16 @@
     "step": {
       "init": {
         "title": "PulsePoint options",
-        "description": "Filter incidents, tune polling, and set up watched addresses.",
+        "description": "Filter incidents, tune polling, set up watched addresses, and choose how long cleared incidents linger on the map. These settings apply to this agency only.",
         "data": {
           "scan_interval": "Poll interval (seconds)",
           "incident_types": "Only include these incident types (leave empty for all)",
           "watch_radius_km": "Watched-address radius (km)",
           "watched_addresses": "Watched addresses (YAML list; each item: name, address, latitude, longitude)",
-          "closed_ttl": "Keep closed incidents on map (minutes)"
+          "closed_ttl": "Map pin grace period after an incident clears (minutes)"
+        },
+        "data_description": {
+          "closed_ttl": "How long to keep a cleared incident's map pin on the map before removing it. Set to 0 to remove pins immediately when the incident clears. Applies to this agency only."
         }
       }
     }
