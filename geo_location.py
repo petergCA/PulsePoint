@@ -2,6 +2,10 @@
 
 Entities are created when an incident becomes active and stay on the map in a
 "closed" state after the incident clears, for a configurable TTL (default 60 min).
+
+Visibility of all pins can be toggled at runtime via the "Show incidents on
+map" switch; this platform listens for the toggle signal and adds/removes
+entities accordingly without requiring a reload.
 """
 from __future__ import annotations
 
@@ -10,10 +14,12 @@ from collections.abc import Callable
 from homeassistant.components.geo_location import GeolocationEvent
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_call_later
 
 from .api import Incident
-from .const import CONF_CLOSED_TTL, DEFAULT_CLOSED_TTL, DOMAIN
+from .const import CONF_CLOSED_TTL, DEFAULT_CLOSED_TTL, DOMAIN, signal_map_pins
 from .coordinator import PulsePointCoordinator
 
 GEO_SOURCE = "pulsepoint"
@@ -69,7 +75,7 @@ async def async_setup_entry(
             if entity is not None:
                 hass.async_create_task(entity.async_remove())
 
-        scheduled_removals[inc_id] = hass.async_call_later(ttl_seconds, _do_remove)
+        scheduled_removals[inc_id] = async_call_later(hass, ttl_seconds, _do_remove)
 
     def _cancel_removal(inc_id: str) -> None:
         cancel = scheduled_removals.pop(inc_id, None)
@@ -78,6 +84,10 @@ async def async_setup_entry(
 
     @callback
     def _handle_update() -> None:
+        # When pins are hidden, do nothing — entities are removed by the
+        # visibility handler and re-created here once they're shown again.
+        if not coordinator.map_pins_enabled:
+            return
         if not coordinator.data:
             return
         active: list[Incident] = coordinator.data.get("active") or []
@@ -102,11 +112,26 @@ async def async_setup_entry(
         # Detect newly-closed incidents (were active last poll, gone now).
         for inc_id, entity in list(known.items()):
             if inc_id not in active_map and entity.is_active:
-                entity.update_incident(entity._incident, is_active=False)
+                entity.update_incident(entity.incident, is_active=False)
                 _schedule_removal(inc_id)
 
         if new_entities:
             async_add_entities(new_entities)
+
+    @callback
+    def _remove_all() -> None:
+        for inc_id in list(scheduled_removals):
+            _cancel_removal(inc_id)
+        for inc_id, entity in list(known.items()):
+            known.pop(inc_id, None)
+            hass.async_create_task(entity.async_remove())
+
+    @callback
+    def _set_visibility(enabled: bool) -> None:
+        if enabled:
+            _handle_update()
+        else:
+            _remove_all()
 
     @callback
     def _cleanup() -> None:
@@ -114,6 +139,11 @@ async def async_setup_entry(
             _cancel_removal(inc_id)
 
     entry.async_on_unload(coordinator.async_add_listener(_handle_update))
+    entry.async_on_unload(
+        async_dispatcher_connect(
+            hass, signal_map_pins(entry.entry_id), _set_visibility
+        )
+    )
     entry.async_on_unload(_cleanup)
     _handle_update()
 
@@ -140,6 +170,11 @@ class PulsePointIncidentGeoEvent(GeolocationEvent):
     @property
     def is_active(self) -> bool:
         return self._is_active
+
+    @property
+    def incident(self) -> Incident:
+        """The most recent incident snapshot backing this pin."""
+        return self._incident
 
     def update_incident(self, incident: Incident, is_active: bool) -> None:
         """Refresh incident snapshot and push updated state to HA."""
