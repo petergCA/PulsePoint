@@ -24,7 +24,7 @@ import aiohttp
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-from .const import API_URL, API_URL_LEGACY, incident_type_name
+from .const import API_URL, API_URL_LEGACY, REQUEST_HEADERS, incident_type_name
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -197,28 +197,72 @@ class PulsePointClient:
         return active, recent
 
     async def _fetch_raw(self) -> dict[str, Any]:
-        """Try the modern endpoint first, fall back to the legacy one."""
+        """Fetch the encrypted `{ct, iv, s}` envelope from PulsePoint.
+
+        Tries the modern endpoint first, then the legacy one. PulsePoint returns
+        an *empty* HTTP 200 body to clients that don't present a browser-like
+        User-Agent, so we send :data:`REQUEST_HEADERS` explicitly to override the
+        shared HA session's "HomeAssistant/<version>" User-Agent (which now gets
+        an empty body and previously surfaced as a "char 0" JSON decode error).
+
+        Each endpoint is isolated: a non-200 status, an empty body, a non-JSON
+        body, or an unexpected JSON shape is recorded and we move on to the next
+        endpoint rather than letting one bad endpoint abort setup. Only if every
+        endpoint fails do we raise, with the per-endpoint diagnostics attached.
+        """
         endpoints = [
             (API_URL, {"resource": "incidents", "agencyid": self._agency_id}),
             (API_URL_LEGACY, {"agency_id": self._agency_id}),
         ]
-        last_err: Exception | None = None
+        errors: list[str] = []
         for url, params in endpoints:
             try:
-                async with self._session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=20)) as resp:
-                    resp.raise_for_status()
-                    payload = await resp.json(content_type=None)
-                if isinstance(payload, dict) and "ct" in payload:
-                    return payload
-                _LOGGER.debug("Unexpected payload from %s: %r", url, payload)
-            except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as err:
-                # ClientError: HTTP/connection failures. TimeoutError: the
-                # ClientTimeout above (not an aiohttp.ClientError). ValueError:
-                # a non-JSON / malformed body from resp.json(). In every case
-                # we want to fall through to the next endpoint rather than let
-                # the exception escape, then surface one clean error below.
-                last_err = err
+                async with self._session.get(
+                    url,
+                    params=params,
+                    headers=REQUEST_HEADERS,
+                    timeout=aiohttp.ClientTimeout(total=20),
+                ) as resp:
+                    status = resp.status
+                    body = await resp.text()
+            except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+                errors.append(f"{url}: {type(err).__name__}: {err}")
                 _LOGGER.debug("PulsePoint fetch from %s failed: %s", url, err)
+                continue
+
+            if status != 200:
+                errors.append(f"{url}: HTTP {status}")
+                _LOGGER.debug("PulsePoint %s returned HTTP %s", url, status)
+                continue
+
+            stripped = body.strip()
+            if not stripped:
+                errors.append(f"{url}: empty response body")
+                _LOGGER.debug(
+                    "PulsePoint %s returned an empty body (User-Agent gating?)", url
+                )
+                continue
+
+            try:
+                payload = json.loads(stripped)
+            except ValueError as err:
+                snippet = stripped[:80].replace("\n", " ")
+                errors.append(f"{url}: non-JSON body ({err})")
+                _LOGGER.debug("PulsePoint %s returned non-JSON: %s", url, snippet)
+                continue
+
+            if isinstance(payload, dict) and {"ct", "iv", "s"} <= payload.keys():
+                _LOGGER.debug("PulsePoint fetched encrypted envelope from %s", url)
+                return payload
+
+            shape = (
+                f"keys={sorted(payload)[:6]}"
+                if isinstance(payload, dict)
+                else type(payload).__name__
+            )
+            errors.append(f"{url}: unexpected JSON shape ({shape})")
+            _LOGGER.debug("Unexpected payload from %s: %r", url, payload)
+
         raise PulsePointConnectionError(
-            f"All PulsePoint endpoints failed: {last_err}"
+            "All PulsePoint endpoints failed: " + "; ".join(errors)
         )

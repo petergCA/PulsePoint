@@ -12,6 +12,23 @@ MANUFACTURER = "PulsePoint Foundation"
 API_URL = "https://api.pulsepoint.org/v1/webapp"
 API_URL_LEGACY = "https://web.pulsepoint.org/DB/giba.php"
 
+# Headers sent with every PulsePoint request.
+#
+# PulsePoint's endpoints return an *empty* HTTP 200 body to clients that don't
+# present a browser-like User-Agent. Home Assistant's shared aiohttp session
+# sends a "HomeAssistant/<version>" User-Agent, which now gets an empty
+# response and surfaced as a JSON decode error ("unexpected character: line 1
+# column 1 (char 0)"). Sending these headers makes the request look like the
+# web app. No API key or authentication is required.
+REQUEST_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json, text/plain, */*",
+    "Referer": "https://web.pulsepoint.org/",
+}
+
 # Config entry keys
 CONF_AGENCY_ID = "agency_id"
 CONF_SCAN_INTERVAL = "scan_interval"
