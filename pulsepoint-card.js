@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const CARD_VERSION = '0.2.0';
+  const CARD_VERSION = '0.2.1';
 
   // ── User-configurable options and their defaults ───────────────────────────
   const DEFAULTS = {
@@ -348,11 +348,12 @@
             color: var(--primary-color);
             min-width: 80px;
             text-align: center;
+            /* Same border in both states so the header height never shifts */
+            border: 1.5px solid transparent;
           }
           .count.zero {
             background: var(--secondary-background-color);
             color: var(--secondary-text-color);
-            border: 1.5px solid transparent;
           }
 
           /* ── Filters ── */
