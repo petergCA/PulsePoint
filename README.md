@@ -4,7 +4,11 @@
 [![HA version](https://img.shields.io/badge/Home%20Assistant-2024.1%2B-blue.svg)](https://www.home-assistant.io)
 [![GitHub Release](https://img.shields.io/github/v/release/petergCA/PulsePoint)](https://github.com/petergCA/PulsePoint/releases)
 
-A custom Home Assistant integration that polls the [PulsePoint](https://www.pulsepoint.org) incident feed for one or more fire/EMS agencies and surfaces active and recent incidents as sensors, live map pins, and Home Assistant bus events.
+A custom Home Assistant integration that polls the [PulsePoint](https://www.pulsepoint.org) incident feed for one or more fire/EMS agencies and surfaces active and recent incidents as sensors, live map pins, and Home Assistant bus events — plus a bundled Lovelace card to put them on a dashboard.
+
+<img src="docs/hero.png" width="520" alt="PulsePoint card showing four active incidents across two agencies, with distance slider and agency filter chips">
+
+*Screenshots use simulated incident data.*
 
 ---
 
@@ -182,6 +186,8 @@ show_distance_slider: true
 - **Collapsible list** — cap visible rows with `max_incidents`; the rest sit behind a "Show more" button.
 - **All-clear state** — when nothing is active, the card shows a green all-clear row sized exactly like an incident row, so the card height doesn't jump.
 - **Tap to map** — tapping an incident opens its address in Google Maps.
+
+<img src="docs/empty.png" width="520" alt="PulsePoint card in its all-clear state: zero active incidents, green check row, same height as a one-incident card">
 
 ### Card options
 
