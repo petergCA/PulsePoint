@@ -10,6 +10,7 @@ A custom Home Assistant integration that polls the [PulsePoint](https://www.puls
 
 ## Features
 
+- **Bundled Lovelace card** — a polished incident-list card with a live distance filter, agency chips, and a full visual editor. Auto-registered as a dashboard resource; no manual resource setup needed.
 - **Per-agency sensors** — an active-incident count and a recent-incident count, each carrying the full incident list as attributes.
 - **Live map pins** — each active incident is shown as a `geo_location` pin on Home Assistant's built-in map, with a category-matched icon. Pins are transient: they appear while an incident is active and are removed when it clears.
 - **Per-agency map toggle** — a "Show incidents on map" switch turns the pins on or off at runtime, no reload required.
@@ -151,6 +152,52 @@ distance_from_home_miles: 0.83
 ```
 
 `distance_from_home_miles` is measured from your Home Assistant configured location.
+
+---
+
+## Lovelace Card
+
+The integration bundles **`pulsepoint-card`**, a custom incident-list card. It is served at `/pulsepoint/pulsepoint-card.js` and **auto-registered as a dashboard resource** when the integration loads — no manual resource configuration required. (If your dashboard resources are YAML-managed, add the URL above as a `module` resource yourself.)
+
+Add it from the dashboard card picker (**Add card → search "PulsePoint"**) — it has a full visual editor — or via YAML:
+
+```yaml
+type: custom:pulsepoint-card
+title: Nearby Incidents
+entities:
+  - sensor.pulsepoint_agency_active_incidents
+  - entity: sensor.pulsepoint_other_agency_active_incidents
+    name: Neighboring FD          # optional friendly label
+default_distance: 6
+max_distance: 25
+show_distance_slider: true
+```
+
+### Card features
+
+- **Distance filter** — a live slider that filters incidents by distance from your Home Assistant location. Hide it (`show_distance_slider: false`) to pin the radius at `default_distance`.
+- **Agency chips** — with multiple agencies configured, tappable chips toggle each agency on/off and show its in-range count.
+- **Category icons & colours** — every PulsePoint incident type code gets a matched Material Design icon and colour.
+- **Fresh-incident indicator** — incidents newer than `highlight_recent_minutes` get a pulsing dot.
+- **Collapsible list** — cap visible rows with `max_incidents`; the rest sit behind a "Show more" button.
+- **All-clear state** — when nothing is active, the card shows a green all-clear row sized exactly like an incident row, so the card height doesn't jump.
+- **Tap to map** — tapping an incident opens its address in Google Maps.
+
+### Card options
+
+| Option | Default | Description |
+|---|---|---|
+| `title` | `PulsePoint` | Card title. |
+| `entities` | *(required)* | One or more PulsePoint incident sensors (strings, or `{entity, name}` maps for a custom agency label). |
+| `default_distance` | `6` | Initial slider position, in miles. Used as the fixed radius when the slider is hidden. |
+| `max_distance` | `25` | Slider upper bound, in miles. |
+| `show_distance_slider` | `true` | Show the distance slider row. |
+| `show_agency_filter` | `true` | Show agency filter chips (only with 2+ agencies). |
+| `show_time` | `true` | Show the "21m ago" received time. |
+| `show_units` | `true` | Show responding unit IDs. |
+| `sort_by` | `distance` | `distance` (closest first) or `newest` (most recent first). |
+| `max_incidents` | `0` | Max rows before collapsing behind "Show more". `0` shows all. |
+| `highlight_recent_minutes` | `10` | Pulse-dot incidents newer than this many minutes. `0` disables. |
 
 ---
 
