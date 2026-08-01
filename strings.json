@@ -11,6 +11,7 @@
     },
     "error": {
       "cannot_connect": "Could not reach the PulsePoint API.",
+      "service_unavailable": "PulsePoint's service is temporarily unavailable (their API returned a server error). This is on their end and usually clears on its own — try again shortly.",
       "invalid_agency": "That agency ID didn't return any incident data.",
       "decrypt_failed": "PulsePoint returned data we couldn't decrypt. The API encoding may have changed.",
       "unknown": "Unexpected error."

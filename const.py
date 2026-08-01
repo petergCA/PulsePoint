@@ -6,15 +6,20 @@ from datetime import timedelta
 DOMAIN = "pulsepoint"
 MANUFACTURER = "PulsePoint Foundation"
 
-# PulsePoint endpoint. The legacy `web.pulsepoint.org/DB/giba.php` host still
-# works, but the newer `api.pulsepoint.org/v1/webapp` endpoint is what the
-# current web app uses. We default to the new one and fall back to the old one.
+# PulsePoint endpoint.
+#
+# This is the only endpoint. The legacy `web.pulsepoint.org/DB/giba.php` host
+# was decommissioned on 2026-07-31 when PulsePoint replaced their web app with
+# a static React SPA ("PulsePoint Respond") served from S3/CloudFront. That
+# path now returns the SPA's index.html, so using it as a fallback produced a
+# misleading "non-JSON body (Expecting value: line 1 column 1 (char 0))" that
+# masked the real error from the primary endpoint. Removed deliberately — do
+# not re-add it as a fallback.
 API_URL = "https://api.pulsepoint.org/v1/webapp"
-API_URL_LEGACY = "https://web.pulsepoint.org/DB/giba.php"
 
 # Headers sent with every PulsePoint request.
 #
-# PulsePoint's endpoints return an *empty* HTTP 200 body to clients that don't
+# PulsePoint's endpoint returns an *empty* HTTP 200 body to clients that don't
 # present a browser-like User-Agent. Home Assistant's shared aiohttp session
 # sends a "HomeAssistant/<version>" User-Agent, which now gets an empty
 # response and surfaced as a JSON decode error ("unexpected character: line 1

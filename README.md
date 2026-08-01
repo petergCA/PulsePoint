@@ -452,6 +452,32 @@ The integration maps PulsePoint type codes to human-readable names; unknown code
 
 ---
 
+## Troubleshooting
+
+### "Integration failed to set up" / entities unavailable
+
+The integration talks to a single upstream endpoint, `api.pulsepoint.org`. Check the log message on the config entry — it names the cause directly:
+
+| Message | What it means | What to do |
+|---|---|---|
+| `PulsePoint returned HTTP 5xx — their service is having trouble` | PulsePoint's own backend is failing. Affects everyone, including their official web app. | Nothing. Home Assistant retries automatically and the entry recovers on its own once they fix it. |
+| `PulsePoint returned HTTP 403` / `404` | The request was rejected or the path moved. | Confirm your agency ID. If [web.pulsepoint.org](https://web.pulsepoint.org) works but this doesn't, open an issue. |
+| `Timed out` / `Could not reach` | Network problem between Home Assistant and PulsePoint. | Check your host's DNS and outbound connectivity. |
+| `returned a non-JSON body ...; starts with: '<!doctype html...'` | An HTML page came back where JSON was expected. | Usually an upstream redirect or captive portal. The snippet in the message identifies the page. |
+| `unexpected JSON shape` / `decryption failed` | PulsePoint changed their payload format. | Open an issue — the integration needs updating. |
+
+To confirm an outage is upstream rather than local, run:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" -H "Content-Type: application/json" -A "Mozilla/5.0" "https://api.pulsepoint.org/v1/webapp?resource=incidents&agencyid=YOUR_AGENCY_ID"
+```
+
+`200` means the API is healthy; `500` means PulsePoint is down and there is nothing to fix on your end.
+
+> **Note:** the old `web.pulsepoint.org/DB/giba.php` endpoint was decommissioned on 2026-07-31 when PulsePoint moved their web app to a static SPA. Versions before 0.2.2 used it as a fallback, which made every failure report a confusing `non-JSON body (Expecting value: line 1 column 1 (char 0))` alongside the real error. It is no longer contacted.
+
+---
+
 ## Disclaimer
 
 This integration uses the **unofficial** PulsePoint API. PulsePoint may change or restrict access at any time. It is intended for personal awareness only — never rely on it for emergency response decisions.

@@ -22,6 +22,7 @@ from .api import (
     PulsePointConnectionError,
     PulsePointDecryptError,
     PulsePointError,
+    PulsePointServiceUnavailable,
 )
 from .const import (
     ATTR_ADDRESS,
@@ -154,6 +155,9 @@ class PulsePointCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise UpdateFailed(
                 f"PulsePoint decryption failed (the encoding may have changed): {err}"
             ) from err
+        # Must precede PulsePointConnectionError — it's a subclass.
+        except PulsePointServiceUnavailable as err:
+            raise UpdateFailed(str(err)) from err
         except PulsePointConnectionError as err:
             raise UpdateFailed(f"PulsePoint connection error: {err}") from err
         except PulsePointError as err:

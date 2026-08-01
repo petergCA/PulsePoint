@@ -25,6 +25,7 @@ from .api import (
     PulsePointDecryptError,
     PulsePointError,
     PulsePointInvalidAgency,
+    PulsePointServiceUnavailable,
 )
 from .const import (
     CONF_AGENCY_ID,
@@ -74,6 +75,10 @@ class PulsePointConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_agency"
             except PulsePointDecryptError:
                 errors["base"] = "decrypt_failed"
+            # Must precede PulsePointConnectionError — it's a subclass. Keeps a
+            # PulsePoint outage from reading like a bad agency ID.
+            except PulsePointServiceUnavailable:
+                errors["base"] = "service_unavailable"
             except PulsePointConnectionError:
                 errors["base"] = "cannot_connect"
             except PulsePointError:
