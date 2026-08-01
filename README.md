@@ -59,9 +59,34 @@ A custom Home Assistant integration that polls the [PulsePoint](https://www.puls
 
 ### Finding your Agency ID
 
-1. Open [web.pulsepoint.org](https://web.pulsepoint.org) and select your agency.
-2. Open your browser's DevTools → **Network** tab → filter by **Fetch/XHR**.
-3. Look for a request to `api.pulsepoint.org` and copy the `agencyid` query parameter.
+PulsePoint doesn't display agency IDs anywhere in their UI, so you have to read one out of the web app. Both methods below start the same way:
+
+1. Open [web.pulsepoint.org](https://web.pulsepoint.org) → **Create New Feed**.
+2. Click **Find Agencies**, search by agency name, city, or zip, and click your agency to tick it.
+3. Click **Save**, then **Save and View**. The incident feed loads.
+
+Then use whichever method you prefer.
+
+**Method A — console (one line):**
+
+Open DevTools → **Console** and run:
+
+```js
+JSON.parse(localStorage.RespondSavedFeeds).flatMap(f => f.s.split(','))
+```
+
+This prints one entry per agency across your saved feeds, e.g. `['34035', '34090']`. Requires **Add to Saved Feeds** to have been left checked (it's on by default).
+
+**Method B — network tab:**
+
+Open DevTools → **Network** → filter by **Fetch/XHR**, then reload. Look for a request to `api.pulsepoint.org` and copy the `agencyid` query parameter:
+
+```
+https://api.pulsepoint.org/v1/webapp?resource=incidents&agencyid=34035
+                                                        ^^^^^^^^^^^^^^
+```
+
+Multi-agency feeds show a comma-separated list (`agencyid=34035,34090`) — add each ID as its own config entry.
 
 ### Adding the integration
 
