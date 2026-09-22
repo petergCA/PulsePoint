@@ -51,6 +51,23 @@ class PulsePointServiceUnavailable(PulsePointConnectionError):
     """
 
 
+class PulsePointBlocked(PulsePointConnectionError):
+    """Raised when PulsePoint's bot protection refuses the request.
+
+    PulsePoint put api.pulsepoint.org behind AWS WAF on 2026-09-20. Gated
+    requests come back as HTTP 202 with an empty body and an
+    ``x-amzn-waf-action`` header naming the action (challenge / captcha /
+    block). Passing that gate means executing AWS's browser-side challenge
+    JavaScript to mint an ``aws-waf-token``, which this integration
+    deliberately does not do — defeating a bot-protection control is not
+    something a Home Assistant integration should ship.
+
+    Subclasses :class:`PulsePointConnectionError` so existing handlers and
+    Home Assistant's own retry/backoff keep working: if PulsePoint relaxes
+    the rule, the entry recovers on its own with no user action.
+    """
+
+
 class PulsePointDecryptError(PulsePointError):
     """Raised when the encrypted payload can't be decoded.
 
@@ -221,6 +238,7 @@ class PulsePointClient:
         Failures are classified rather than lumped together, so the message the
         user sees points at the actual cause:
 
+        * AWS WAF gate -> :class:`PulsePointBlocked` (bot protection)
         * HTTP 5xx -> :class:`PulsePointServiceUnavailable` (their outage)
         * HTTP 4xx / transport errors -> :class:`PulsePointConnectionError`
         * HTTP 200 with a body we can't use -> :class:`PulsePointConnectionError`
@@ -237,6 +255,7 @@ class PulsePointClient:
                 timeout=aiohttp.ClientTimeout(total=20),
             ) as resp:
                 status = resp.status
+                waf_action = resp.headers.get("x-amzn-waf-action")
                 body = await resp.text()
         except asyncio.TimeoutError as err:
             raise PulsePointConnectionError(
@@ -246,6 +265,19 @@ class PulsePointClient:
             raise PulsePointConnectionError(
                 f"Could not reach {API_URL}: {type(err).__name__}: {err}"
             ) from err
+
+        # Bot protection. Checked before the status branches below because the
+        # gate answers 202 (a success-range code) with an empty body, which
+        # would otherwise fall through as a bland "HTTP 202".
+        if waf_action or (status == 202 and not body.strip()):
+            detail = f" (x-amzn-waf-action: {waf_action})" if waf_action else ""
+            raise PulsePointBlocked(
+                "PulsePoint's bot protection is refusing requests"
+                f"{detail}. Their API now sits behind AWS WAF and only answers "
+                "clients that solve its browser challenge, so this integration "
+                "cannot fetch data until PulsePoint changes that rule. Home "
+                "Assistant will keep retrying in the background."
+            )
 
         if status >= 500:
             # PulsePoint's own backend erroring. Transient and not actionable by

@@ -485,6 +485,7 @@ The integration talks to a single upstream endpoint, `api.pulsepoint.org`. Check
 
 | Message | What it means | What to do |
 |---|---|---|
+| `PulsePoint's bot protection is refusing requests` | PulsePoint put their API behind AWS WAF on 2026-09-20. It answers non-browser clients with HTTP 202 and an empty body. | Nothing you can configure. The integration keeps retrying and recovers by itself if PulsePoint relaxes the rule. See the note below. |
 | `PulsePoint returned HTTP 5xx — their service is having trouble` | PulsePoint's own backend is failing. Affects everyone, including their official web app. | Nothing. Home Assistant retries automatically and the entry recovers on its own once they fix it. |
 | `PulsePoint returned HTTP 403` / `404` | The request was rejected or the path moved. | Confirm your agency ID. If [web.pulsepoint.org](https://web.pulsepoint.org) works but this doesn't, open an issue. |
 | `Timed out` / `Could not reach` | Network problem between Home Assistant and PulsePoint. | Check your host's DNS and outbound connectivity. |
@@ -498,6 +499,8 @@ curl -s -o /dev/null -w "%{http_code}\n" -H "Content-Type: application/json" -A 
 ```
 
 `200` means the API is healthy; `500` means PulsePoint is down and there is nothing to fix on your end.
+
+> **Note on AWS WAF (since 2026-09-20):** PulsePoint moved `api.pulsepoint.org` behind AWS WAF bot protection. Gated requests return `HTTP 202` with an empty body and an `x-amzn-waf-action: challenge` header. Getting past it means running AWS's browser challenge JavaScript to mint an `aws-waf-token` cookie — deliberately **not** something this integration does, since defeating a bot-protection control isn't appropriate for a Home Assistant integration (and would be fragile besides). The integration reports the block clearly and keeps retrying, so it recovers on its own if PulsePoint changes the rule. You can check the current state with the `curl` command above: `202` means the gate is still up.
 
 > **Note:** the old `web.pulsepoint.org/DB/giba.php` endpoint was decommissioned on 2026-07-31 when PulsePoint moved their web app to a static SPA. Versions before 0.2.2 used it as a fallback, which made every failure report a confusing `non-JSON body (Expecting value: line 1 column 1 (char 0))` alongside the real error. It is no longer contacted.
 

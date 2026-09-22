@@ -1,7 +1,7 @@
 {
   "domain": "pulsepoint",
   "name": "PulsePoint",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "config_flow": true,
   "documentation": "https://github.com/petergCA/PulsePoint",
   "issue_tracker": "https://github.com/petergCA/PulsePoint/issues",

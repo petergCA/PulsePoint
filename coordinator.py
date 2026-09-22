@@ -21,6 +21,7 @@ from .api import (
     PulsePointClient,
     PulsePointConnectionError,
     PulsePointDecryptError,
+    PulsePointBlocked,
     PulsePointError,
     PulsePointServiceUnavailable,
 )
@@ -155,7 +156,9 @@ class PulsePointCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise UpdateFailed(
                 f"PulsePoint decryption failed (the encoding may have changed): {err}"
             ) from err
-        # Must precede PulsePointConnectionError — it's a subclass.
+        # Both must precede PulsePointConnectionError — they're subclasses.
+        except PulsePointBlocked as err:
+            raise UpdateFailed(str(err)) from err
         except PulsePointServiceUnavailable as err:
             raise UpdateFailed(str(err)) from err
         except PulsePointConnectionError as err:

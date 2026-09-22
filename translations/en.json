@@ -12,6 +12,7 @@
     "error": {
       "cannot_connect": "Could not reach the PulsePoint API.",
       "service_unavailable": "PulsePoint's service is temporarily unavailable (their API returned a server error). This is on their end and usually clears on its own — try again shortly.",
+      "blocked": "PulsePoint's bot protection is refusing requests. Their API sits behind AWS WAF and only answers clients that solve its browser challenge, so the integration can't fetch data until PulsePoint changes that rule.",
       "invalid_agency": "That agency ID didn't return any incident data.",
       "decrypt_failed": "PulsePoint returned data we couldn't decrypt. The API encoding may have changed.",
       "unknown": "Unexpected error."
